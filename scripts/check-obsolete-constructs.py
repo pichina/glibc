@@ -226,8 +226,6 @@ class ObsoletePublicDefinitionsAllowed(ConstructChecker):
            typedef unsigned long int ulong;
            typedef unsigned short int ushort;
            typedef unsigned int uint;
-           typedef int register_t;
-           typedef int register_t __attribute__ ((__mode__ (__word__)));
     """
     def __init__(self, reporter):
         super().__init__(reporter)
@@ -264,15 +262,12 @@ class ObsoletePublicDefinitionsAllowed(ConstructChecker):
         if not self.typedef_tokens: return
         if self.typedef_tokens[-1].kind == 'IDENT':
             m = OBSOLETE_TYPE_RE_.match(self.typedef_tokens[-1].text)
-            if m:
-                if self._permissible_public_definition(m):
-                    self.typedef_tokens.clear()
-        elif self.typedef_tokens[-1].kind == 'PUNCTUATOR':
-            if self._is_register_t_with_attribute():
+            if self._permissible_public_definition(m):
                 self.typedef_tokens.clear()
         self._reset()
 
     def _permissible_public_definition(self, m):
+        if not m: return False
         if m.group(1) == '__': return False
         name = m.group(2)
         tk = self.typedef_tokens
@@ -286,9 +281,6 @@ class ObsoletePublicDefinitionsAllowed(ConstructChecker):
             if (name[:5] == 'u_int' and name[-2:] == '_t'
                 and defn[:6] == '__uint' and defn[-2:] == '_t'
                 and name[5:-2] == defn[6:-2]):
-                return True
-
-            if name == 'register_t' and defn == 'int':
                 return True
 
             return False
@@ -311,23 +303,6 @@ class ObsoletePublicDefinitionsAllowed(ConstructChecker):
             return True
 
         return False
-
-    def _is_register_t_with_attribute(self):
-        tk = self.typedef_tokens
-        ntok = len(tk)
-        return (
-            ntok == 12
-            and tk[ 1].kind == 'IDENT'      and tk[ 1].text == 'int'
-            and tk[ 2].kind == 'IDENT'      and tk[ 2].text == 'register_t'
-            and tk[ 3].kind == 'IDENT'      and tk[ 3].text == '__attribute__'
-            and tk[ 4].kind == 'PUNCTUATOR' and tk[ 4].text == '('
-            and tk[ 5].kind == 'PUNCTUATOR' and tk[ 5].text == '('
-            and tk[ 6].kind == 'IDENT'      and tk[ 6].text == '__mode__'
-            and tk[ 7].kind == 'PUNCTUATOR' and tk[ 7].text == '('
-            and tk[ 8].kind == 'IDENT'      and tk[ 8].text == '__word__'
-            and tk[ 9].kind == 'PUNCTUATOR' and tk[ 9].text == ')'
-            and tk[10].kind == 'PUNCTUATOR' and tk[10].text == ')'
-            and tk[11].kind == 'PUNCTUATOR' and tk[11].text == ')')
 
 def ObsoleteTypedefChecker(reporter, fname):
     """Factory: produce an instance of the appropriate
